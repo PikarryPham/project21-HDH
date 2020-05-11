@@ -16,7 +16,7 @@ void writeFile(string filename, Volume vol)
 
 }
 //ham chuyen doi tu cluster sang sector (ko tinh phan sector trong vung boot + fat)
-uint32_t ClusterToSector(int cluster, BootSector BS)
+int32 ClusterToSector(int cluster, BootSector BS)
 {
 
 }
@@ -42,11 +42,6 @@ void deleteItem(string filename, vector<Item> IT, Volume vol)
 }
 //tao thong so phu hop cho cac bien cua boot sector
 void createInfor(Volume vol)
-{
-
-}
-//ham convert tu LE sang so TN hop ly
-int convert(int8* val)
 {
 
 }
