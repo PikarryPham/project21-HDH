@@ -20,12 +20,12 @@ void initVol(Volume& vol)
 		vol.D.sec.push_back(temp);*/
 }
 //doc vol
-void readFile(string filename, Volume vol)
+void readFile(string filename, Volume& vol)
 {
 
 }
 //ghi vol
-void writeFile(string filename, Volume vol)
+void writeFile(string filename, Volume& vol)
 {
 
 }
@@ -46,17 +46,17 @@ vector<Item> createList(Volume vol)
 	return it;
 }
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-void exportItem(string filename, vector<Item> IT, Data D)
+void exportItem(string filename, Volume& vol)
 {
 
 }
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, vector<Item> IT, Volume vol)
+void importItem(string filename, Volume& vol)
 {
 
 }
 //xoa 1 file hoac 1 folder
-void deleteItem(string filename, vector<Item> IT, Volume vol)
+void deleteItem(string filename, Volume& vol)
 {
 
 }
@@ -74,7 +74,7 @@ void createInfor(Volume &vol)
 	cout << "What kind of type of volume'size you want to create volume: " << endl;
 	cout << "1.MB" << endl;
 	cout << "2.GB" << endl;
-	cout << "3.TB" << endl;
+	cout << "0.bytes (default) " << endl;
 	cin >> option;
 	cout << "How many for size of the volume?: ";
 	cin >> size;
@@ -89,24 +89,19 @@ void createInfor(Volume &vol)
 		cout << "The volume has " << size << "GB ~ " << bytes << " bytes" << endl;
 		break;
 	}
-	case 3: {//trong TH nguoi dung nhap TB --> bytes
-		bytes = size * pow(1024, 4);
-		cout << "The volume has " << size << "TB ~ " << bytes << " bytes" << endl;
-		break;
-	}
 	default: //mac dinh la bytes
 		bytes = size;
 		cout << "The volume has " << bytes << " bytes" << endl;
 	}
 
-	//input so bytes per sector mong muon (2)
-	int16 BperSector = 0;
+	//input so bytes per sector mong muon (2) =-> KHONG CAN HAM NAY, default = 512
+	/*int16 BperSector = 0;
 	do {
 		cout << "How many number of sectors do you want for per sector (512,1024,....): ";
 		cin >> BperSector;
 
 		if (BperSector % 2 != 0 || BperSector < 512) cout << "Please enter again" << endl;
-	} while (BperSector % 2 != 0 || BperSector < 512);
+	} while (BperSector % 2 != 0 || BperSector < 512);*/
 
 	//input so sector mong muon cho vung bootsector (neu k phai la boi so cua 2 thi yeu cau nhap lai) (3)
 	int16 SectorofBootSector = 0;
@@ -128,9 +123,9 @@ void createInfor(Volume &vol)
 	/*
 	Tu (1),(2),(3), (4) ==> cac thong so cho boot sector
 	*/
-	vol.BS.BperSector = BperSector;
+	vol.BS.BperSector = 512;
 	vol.BS.BootSector = SectorofBootSector;
-	vol.BS.vol_size = bytes / BperSector;
+	vol.BS.vol_size = bytes / vol.BS.BperSector;
 	vol.BS.SperCluster = sectorPerCluster;
 	cout << "Size of volume (sector) is " << vol.BS.vol_size << endl;
 	//==> từ các thông số trên ta phải suy ra được số sector cho FAT = SF
@@ -189,7 +184,7 @@ void createPass(string filename, Volume& vol)
 	}
 }
 string toHex(unsigned int input) { //hàm convert thành hex từ biến hash unsigned int
-	//hàm này có sử dụng class stringstream để ghép nối chuỗi thật nhanh chóng & tiện lợi, thao tác nhanh hơn vs string --> có sử dụng
+	//hàm này có sử dụng class stringstream để ghép nối chuỗi thật nhanh chóng & tiện lợi, thao tác nhanh hơn vs string --> có sử dụng #include <sstream>
 	string hexhash;
 	stringstream hexstream;
 	hexstream << hex << input; //Biến số input thành 1 chuỗi số và ghép vào sau chuỗi đang có //ví dụ nếu input = 17 thì nó sẽ là "17"
