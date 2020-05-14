@@ -23,15 +23,18 @@ struct BootSector {
 struct FAT_table {
 	vector<int32> Fat;
 };
+struct Sector {
+	int8 s[512];
+};
 struct Data {
-	vector<int8[512]> sec;
+	vector<Sector> sec;
 };
 struct Item {
-	vector<int8> name;
+	string name;
 	int16 start_cluster;	//cluster bat dau cua file
 	int16 n_cluster;
 	int8 file;	//0: folder, 1:file
-	vector<int8> password;
+	string password;
 };
 struct Volume {
 	BootSector BS;
@@ -41,25 +44,25 @@ struct Volume {
 };
 
 //khoi tao vol
-void initVol(Volume vol);
+void initVol(Volume &vol);
 //doc vol
-void readFile(string filename, Volume vol);
+void readFile(string filename, Volume &vol);
 //ghi vol
-void writeFile(string filename, Volume vol);
+void writeFile(string filename, Volume &vol);
 //ham chuyen doi tu cluster sang sector (ko tinh phan sector trong vung boot + fat)
 int32 ClusterToSector(int cluster, BootSector BS);
 //tao danh sach cac file + thu muc co trong vol
 vector<Item> createList(Volume vol);
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-void exportItem(string filename, vector<Item> IT, Data D);
+void exportItem(string filename, Volume &vol);
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, vector<Item> IT, Volume vol);
+void importItem(string filename, Volume &vol);
 //xoa 1 file hoac 1 folder
-void deleteItem(string filename, vector<Item> IT, Volume vol);
+void deleteItem(string filename, Volume &vol);
 //tao thong so phu hop cho cac bien cua boot sector
-void createInfor(Volume vol);
+void createInfor(Volume &vol);
 //ham tao password, hoi ng dung pass
-void createPass(string filename, Volume vol);
+void createPass(string filename, Volume &vol);
 
 /*co the se thiet ke them bien luu lai vi tri cluster bat dau 
 cua vung trong trong phan du lieu, de khoi phai duyet lai,

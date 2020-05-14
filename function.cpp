@@ -1,12 +1,12 @@
 #include "Header.h"
 
 //khoi tao vol
-void initVol(Volume vol)
+void initVol(Volume &vol)
 {
 
 }
 //doc vol
-void readFile(string filename, Volume vol)
+void readFile(string filename, Volume &vol)
 {
 
 }
@@ -26,27 +26,27 @@ vector<Item> createList(Volume vol)
 
 }
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-void exportItem(string filename, vector<Item> IT, Data D)
+void exportItem(string filename, Volume& vol)
 {
 
 }
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, vector<Item> IT, Volume vol)
+void importItem(string filename, Volume &vol)
 {
 
 }
 //xoa 1 file hoac 1 folder
-void deleteItem(string filename, vector<Item> IT, Volume vol)
+void deleteItem(string filename, Volume &vol)
 {
 
 }
 //tao thong so phu hop cho cac bien cua boot sector
-void createInfor(Volume vol)
+void createInfor(Volume &vol)
 {
 
 }
 //ham tao password, hoi ng dung pass
-void createPass(string filename, Volume vol)
+void createPass(string filename, Volume &vol)
 {
 
 }
