@@ -18,7 +18,7 @@ struct BootSector {
 	int32 FAT_size;	//kich thuoc 1 bang FAT (sector)
 	int32 RDET_cluster;	//cluster bat dau cua RDET
 	int32 FAT_empty;	//vi tri trong cua bang FAT
-	int8 raw[490];
+	int8 raw[490] = { 0 };	//
 };
 struct FAT_table {
 	vector<int32> Fat;
@@ -30,10 +30,11 @@ struct Data {
 	vector<Sector> sec;
 };
 struct Item {
-	string name;
-	int16 start_cluster;	//cluster bat dau cua file
-	int16 n_cluster;
+	string name;	//dai max la 61 ky tu, tinh luon phan mo rong
+	string folder; //folder ban dau luon la ten volume do, dai max la 50 ky tu, tinh luon phan mo rong
 	int8 file;	//0: folder, 1:file
+	int32 start_cluster;	//cluster bat dau cua file
+	int32 n_cluster;	//so cluster chua noi dung
 	string password;
 };
 struct Volume {
@@ -41,6 +42,7 @@ struct Volume {
 	FAT_table FT;
 	Data D;
 	vector<Item> I;
+	string nameVol;
 };
 
 //khoi tao vol
@@ -57,6 +59,13 @@ vector<Item> createList(Volume vol);
 void exportItem(string filename, Volume &vol);
 //copy 1 file tu ngoai vao vol
 void importItem(string filename, Volume &vol);
+//them vao bang SDET
+void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File);
+//convert int32, int16 thanh int8
+unsigned char* convert32_to_8(int32 a);
+unsigned char* convert16_to_8(int16 a);
+//in ra danh sach cac file
+void printList(vector<Item>I);
 //xoa 1 file hoac 1 folder
 void deleteItem(string filename, Volume &vol);
 //tao thong so phu hop cho cac bien cua boot sector
