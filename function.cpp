@@ -429,38 +429,47 @@ string toHex(unsigned int input) {
 	};
 
 void createPass(string filename, Volume & vol) {
-		// muốn đặt password cho file nào?
-		//khi nhập tên file --> dò xem file có trong vector<Item> I hay khong tu danh sach cac item co tu ham createList ==> neu co thi moi cho tao pass ==> khong thi out
-
-		//vol.I = createList(vol); //vector<Item> I cua volume trong TH nay se chua danh sach cac item duoc tao tu ham createList
-		//do xem trong vector<Item>I co I[i].name nao == filename hay khong ? chuyen qua phan nhap pass : out
-		int option;
-		do {
-			std::cout << "Do you want to set password for " << filename << " Yes: 1. No: 0 ";
-			cin >> option;
-			if (option == 1) {
-				//password ít nhất 6 ký tự
-				string password;
-				do {
-					std::cout << "Enter your password (at least 6 characters): ";
-					cin >> password;
-					if (password.length() < 6) {
-						std::cout << "Please enter password again!" << endl;
-					}
-				} while (password.length() < 6);
-
-				//them password vao trong cai item I co chua filename do
-				std::cout << "Have set password " << password << " for " << filename << endl;
-				std::cout << toHex(taoPass(password)) << endl;
-			}
-			else if (option == 0) {
-				cout << "Not set password" << endl;
-				return;
-			}
-			else if (option != 0 && option != 1) {
-				cout << "Please enter again" << endl;
-			}
-		} while (option != 0 && option != 1);
+		vol.I = createList(vol); 
+	//vector<Item> I cua volume trong TH nay se chua danh sach cac item duoc tao tu ham createList
+	
+	int len = vol.I.size();
+	for (int i = 1; i < len; i++) //vi item thu nhat la chinh cai volume do ==> bat dau tu 1
+	{
+		if (filename == vol.I[i].name) //do xem trong vector<Item>I co I[i].name nao == filename hay khong ? chuyen qua phan nhap pass : bao "khong co" & out
+		{
+			int option;
+			do {
+				cout << "Do you want to set password for " << filename << " Yes: 1. No: 0 ";
+				cin >> option;
+				if (option == 1) {
+					//password ít nhất 6 ký tự
+					string password;
+					do {
+						cout << "Enter your password (at least 6 characters): ";
+						cin >> password;
+						if (password.length() < 6) {
+							cout << "Please enter password again!" << endl;
+						}
+					} while (password.length() < 6);
+					//cout << toHex(taoPass(password)) << endl;
+					//them password vao trong cai item I co chua filename do
+					vol.I[i].password = toHex(taoPass(password));
+					cout << "Have set password " << password << " for " << filename << endl;
+				}
+				else if (option == 0) {
+					cout << "Not set password" << endl;
+					return;
+				}
+				else if (option != 0 && option != 1) {
+					cout << "Please enter again" << endl;
+				}
+			} while (option != 0 && option != 1);
+		}
+		else {
+			cout << "Can't find " << filename << "in the list of items" << endl;
+			return;
+		}
+	}
 	}
 	//ham nay la ham menu list ra cac option can thiet
 void listMenu(Volume vol) {
