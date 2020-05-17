@@ -7,7 +7,7 @@ void passNameOfVolumeToFile(string fname, Volume vol);
 void passNameOfVolumeToFile(string fname, Volume vol)
 {
 	std::ofstream  fout;
-	fout.open(fname, std::ios_base::app);
+	fout.open(fname, std::ios_base::app); //append vào vị trí cuối của file
 	fout << "\n"; 
 	fout << vol.nameVol;
 	fout.close();
