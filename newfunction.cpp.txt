@@ -1,0 +1,39 @@
+Nếu nội lười tìm thì con ghi sẵn hàm ở đây nha, nội chỉ cần pass bỏ vô thôi
+
+
+/*Header.h*/
+void passNameOfVolumeToFile(string fname, Volume vol);
+/*function.cpp*/
+void passNameOfVolumeToFile(string fname, Volume vol)
+{
+	std::ofstream  fout;
+	fout.open(fname, std::ios_base::app);
+	fout << "\n"; 
+	fout << vol.nameVol;
+	fout.close();
+}
+void createPass(Volume&vol)
+{
+	//phần mới được thêm vào
+	vector<string> list = listNameOfVolume("file.txt");
+	cout << "Enter your volume's name: ";
+	cin >> vol.nameVol;
+	string tmp;
+	//cap nhat ten volume vao trong file, neu trung thi keu dat ten lai
+	for (int i = 0; i < list.size(); i++) {
+		tmp = list[i];
+		if (vol.nameVol == tmp)
+		{
+			cout << "Your new volume name has the same name with another one in file" << endl;
+			cout << "Enter your volume's name again: ";
+			cin >> vol.nameVol;
+		}
+	}
+	if (vol.nameVol != tmp) {
+		passNameOfVolumeToFile("file.txt", vol);
+	}
+	
+	.....
+	//phần code còn lại y chang cái cũ
+
+}

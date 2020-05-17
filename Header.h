@@ -140,3 +140,4 @@ bien luu vi tri trong trong RDET + FAT nua.
 *** hien tai chua co, do anh chua biet nen them o dau.
 */
 void listMenu(Volume vol);
+void passNameOfVolumeToFile(string fname, Volume vol);

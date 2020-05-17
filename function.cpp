@@ -579,8 +579,25 @@ void deleteItem(string filename, Volume & vol) {
 	}
 	//tao thong so phu hop cho cac bien cua boot sector
 void createInfor(Volume& vol) {
+	
+	//phần mới được thêm vào
+	vector<string> list = listNameOfVolume("file.txt");
 	cout << "Enter your volume's name: ";
 	cin >> vol.nameVol;
+	string tmp;
+	//cap nhat ten volume vao trong file, neu trung thi keu dat ten lai
+	for (int i = 0; i < list.size(); i++) {
+		tmp = list[i];
+		if (vol.nameVol == tmp)
+		{
+			cout << "Your new volume name has the same name with another one in file" << endl;
+			cout << "Enter your volume's name again: ";
+			cin >> vol.nameVol;
+		}
+	}
+	if (vol.nameVol != tmp) {
+		passNameOfVolumeToFile("file.txt", vol);
+	}
 	// các thông số hợp lý cho FAT32
 	int size;
 	int option;
@@ -816,5 +833,12 @@ void listMenu(Volume vol) {
 		
 		smallMenu(vol);
 	}
-
+void passNameOfVolumeToFile(string fname, Volume vol)
+{
+	std::ofstream  fout;
+	fout.open(fname, std::ios_base::app);
+	fout << "\n"; 
+	fout << vol.nameVol;
+	fout.close();
+}
 
