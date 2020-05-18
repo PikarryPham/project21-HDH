@@ -48,22 +48,25 @@ void initVol(Volume &vol);
 //doc vol
 void readFile(string filename, Volume &vol);
 //ghi vol
-void writeFile(string filename, Volume &vol);
+void writeFile(string filename, Volume vol);
 //ham chuyen doi tu cluster sang sector (ko tinh phan sector trong vung boot + fat)
 int32 ClusterToSector(int cluster, BootSector BS);
 //tao danh sach cac file + thu muc co trong vol
 vector<Item> createList(Volume vol);
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-void exportItem(string filename, Volume &vol);
+void exportItem(string filename, Volume vol);
 //copy 1 file tu ngoai vao vol
 void importItem(string filename, Volume &vol);
 //xoa 1 file hoac 1 folder
-void deleteItem(string filename, Volume &vol);
+void deleteItem(string filename, Volume &vol, string volName);
 //tao thong so phu hop cho cac bien cua boot sector
 void createInfor(Volume &vol);
 //ham tao password, hoi ng dung pass
 void createPass(string filename, Volume &vol);
-
+unsigned char* convert32_to_8(int32 a);
+unsigned char* convert16_to_8(int16 a);
+int32 convert8_to_32(unsigned char *a);
+int16 convert8_to_16(unsigned char* a);
 /*co the se thiet ke them bien luu lai vi tri cluster bat dau 
 cua vung trong trong phan du lieu, de khoi phai duyet lai,
 bien luu vi tri trong trong RDET + FAT nua.
