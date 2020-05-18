@@ -164,8 +164,11 @@ vector<Item> createList(Volume vol)
 			break;
 		if (item.start_cluster == 0 && item.n_cluster == 0)
 			break;
-		it.push_back(item);
-		push++;
+		if (item.name[0] != (char)229)
+		{
+			it.push_back(item);
+			push++;
+		}
 		countByte += 128;
 		if (countByte == 512)
 		{
@@ -176,7 +179,7 @@ vector<Item> createList(Volume vol)
 
 	//read SDET
 	int pop = 0;
-	do {
+	while (pop < push) {
 		Item item = it[pop];
 		pop++;
 		int countByte = 0;
@@ -189,8 +192,11 @@ vector<Item> createList(Volume vol)
 				break;
 			if (item.start_cluster == 0 && item.n_cluster == 0)
 				break;
-			it.push_back(item);
-			push++;
+			if (item.name[0] != (char)229)
+			{
+				it.push_back(item);
+				push++;
+			}
 			countByte += 128;
 			if (countByte == 512)
 			{
@@ -198,50 +204,58 @@ vector<Item> createList(Volume vol)
 				countByte = 0;
 			}
 		} while (1);
-	} while (pop<push);
+	} ;
 	return it;
 }
 
 Item FindFile(string name,Volume vol) {
-	for (int i = 0; i < sizeof(vol.I); i++)
+	int Isize = vol.I.size();
+	Item item;
+	for (int i = 0; i < Isize; i++)
 	{
 		if (name == vol.I[i].name)
 			return vol.I[i];
 	}
-	cout << "Cannot find " << name << " file" << endl;
-	return { 0 };
+	item.name = "cannotfind";
+	return item;
 }
 
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-void exportItem(string filename, Volume vol)
+void exportItem(string filename, Volume vol,string volName)
 {
 	//chưa hoi pass
-	//fat va rdet can xoa
 	string filePath;
 	cout << "Example path is H:\\NewFolder\\" << endl;
 	cout << "Enter path to export: ";
 	getline(cin, filePath);
 	filePath += filename;
 	Item item = FindFile(filename, vol);
-	Sector buffer;
-	ofstream fout(filePath, ios::binary);
-	if (!fout.is_open())
+	if (item.name =="cannotfind")
 	{
-		cout << "Can not create File.";
-		return;
+		cout << "Cannot find " << filename << " file" << endl;
 	}
 	else {
-		//đọc và kiểm tra phân mảnh
-		int32 current_cluster= item.start_cluster;
-		do {
-			for (int i = 0; i < vol.BS.SperCluster; i++) {
-				buffer = vol.D.sec[(current_cluster*vol.BS.SperCluster) + i];
-				fout.write((char *)&buffer, sizeof(buffer));
-			}
-			current_cluster = vol.FT.Fat[current_cluster];
-		} while (current_cluster!= 268435455);
+		Sector buffer;
+		ofstream fout(filePath, ios::binary);
+		if (!fout.is_open())
+		{
+			cout << "Can not create File.";
+			return;
+		}
+		else {
+			//đọc và kiểm tra phân mảnh
+			int32 current_cluster = item.start_cluster;
+			do {
+				for (int i = 0; i < vol.BS.SperCluster; i++) {
+					buffer = vol.D.sec[((current_cluster-2)*vol.BS.SperCluster) + i];
+					fout.write((char *)&buffer, sizeof(buffer));
+				}
+				current_cluster = vol.FT.Fat[current_cluster];
+			} while (current_cluster != 268435455);
+		}
+		fout.close();
+		deleteItem(filename, vol, volName);
 	}
-	fout.close();
 }
 //copy 1 file tu ngoai vao vol
 //void importItem(string filename, Volume& vol)
@@ -505,63 +519,81 @@ int32 convert8_to_32(unsigned char *a) {
 //chua chay
 void deleteItem(string filename, Volume &vol,string volName)
 {
-	int32 rdet_sector = vol.BS.BootSector + vol.BS.numFAT * vol.BS.FAT_size;
+	int32 rdet_sector = 0;
 	int32 start_sector;
 	Item item = FindFile(filename, vol);
-	if (item.folder == volName)
+	if (item.name == "cannotfind")
 	{
-		start_sector = rdet_sector;
+		cout << "Already erase/move " << filename << " file" << endl;
 	}
 	else {
-		Item Folder = FindFile(item.folder, vol);
-		start_sector = (Folder.start_cluster-2)*vol.BS.SperCluster + rdet_sector;
-	}
-	//doc de tim vi tri file trong rdet/sdet
-	int32 fileRdet;
-	ifstream fin(volName, ios::binary);
-	if (!fin.is_open())
-	{
-		cout << "Can not open volume.";
-		return;
-	}
-	else
-	{
-		fin.seekg(start_sector*512, ios::beg);
-		Item buffer;
+		if (item.folder == volName)
+		{
+			start_sector = rdet_sector;
+		}
+		else {
+			Item Folder = FindFile(item.folder, vol);
+			start_sector = (Folder.start_cluster - 2)*vol.BS.SperCluster + rdet_sector;
+		}
+		//doc de tim vi tri file trong rdet/sdet
+		int32 fileRdet;
+		int file_D;
+		Sector aSector = vol.D.sec[start_sector];
+		int countByte = 0;
 		do {
-			int32 current_pos = fin.tellg();
-			fin.read((char *)&buffer,sizeof(buffer));
-			int pos = buffer.name.find('\0');
-			buffer.name = buffer.name.substr(0, pos);
-			if (buffer.name == filename)
+			Item item = readItem(vol, aSector, countByte);
+			if (item.file != 0 && item.file != 1)
+				break;
+			if (item.start_cluster == 0 && item.n_cluster == 0)
+				break;
+			if (item.name == filename)
 			{
-				fileRdet = current_pos;
+				file_D = start_sector;
+				fileRdet = (start_sector + vol.BS.FAT_size*vol.BS.numFAT + vol.BS.BootSector) * 512 + countByte;
 				break;
 			}
+			countByte += 128;
+			if (countByte == 512)
+			{
+				aSector = vol.D.sec[++start_sector];
+				countByte = 0;
+			}
 		} while (1);
-	}
-	//sua bang fat va doi E5 trong entry
-	ofstream fout(volName, ios::binary|ios::app);
-	if (!fout.is_open())
-	{
-		cout << "Can not open volume.";
-		return;
-	}
-	else
-	{
-		int start_FAT = 512 * (vol.BS.BootSector);
-		int start_Position = start_FAT + item.start_cluster * 4;
-		fout.seekp(start_Position, ios::beg);
-		for (int i = 0; i < item.n_cluster; i++)
-			fout.write((char*)&vol.FT.Fat[start_Position + i], sizeof(vol.FT.Fat[i]));
+		//sua bang fat va doi E5 trong entry
+		ofstream fout(volName, ios::binary | ios::in);
+		if (!fout.is_open())
+		{
+			cout << "Can not open volume.";
+			return;
+		}
+		else
+		{
+			int start_FAT = 512 * (vol.BS.BootSector);
+			int start_Position = start_FAT + item.start_cluster * 4;
+			fout.seekp(start_Position, ios::beg);
+			for (int i = 0; i < item.n_cluster; i++)
+			{
+				int32 zero = 0;
+				fout.write((char *)&zero, sizeof(zero));
+				vol.FT.Fat[item.start_cluster + i] = 0;
+			}
+			int8 firstByte = 229;
+			item.name[0] = (char)firstByte;
+			fout.seekp(fileRdet, ios::beg);
+			vol.D.sec[file_D].s[0] = (char)229;
+			for (int i = 0; i < sizeof(vol.I); i++)
+			{
+				if (filename == vol.I[i].name)
+				{
+					vol.I.erase(vol.I.begin() + i);
+					break;
+				}
+			}
+			fout.write((char *)&item.name[0], sizeof(char));
+		}
 
-		int8 firstByte = 229;
-		item.name[0] = (char)firstByte;
-		fout.seekp(fileRdet, ios::beg);
-		fout.write((char *)&item, sizeof(item));
+		fout.close();
 	}
-	
-	fout.close();
 }
 //tao thong so phu hop cho cac bien cua boot sector
 void createInfor(Volume &vol)

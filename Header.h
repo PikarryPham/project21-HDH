@@ -61,7 +61,7 @@ int32 ClusterToSector(int cluster, BootSector BS);
 //tao danh sach cac file + thu muc co trong vol
 vector<Item> createList(Volume vol);
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-void exportItem(string filename, Volume vol);
+void exportItem(string filename, Volume vol,string volName);
 //copy 1 file tu ngoai vao vol
 void importItem(string filename, Volume &vol);
 void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File);
