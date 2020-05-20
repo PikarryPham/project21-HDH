@@ -115,7 +115,9 @@ int32 ClusterToSector(int cluster, BootSector BS);
 vector<Item> createList(Volume vol);
 Item readItem(Volume vol, Sector aSector, int currentByte);
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-Item FindFile(string name, Volume vol);
+Item FindFile(string name, Volume vol, string folder_name);
+Item FindFolder(string name, Volume vol);
+void deleteItem_Export(string filename, Volume& vol, string volName, string folder_name);
 void deleteItem(string filename, Volume& vol, string volName);
 void exportItem(string filename, Volume& vol, string volName);
 //copy 1 file tu ngoai vao vol

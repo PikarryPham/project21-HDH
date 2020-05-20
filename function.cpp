@@ -440,9 +440,9 @@ vector<Item> createList(Volume vol)
 		Item item = it[pop];
 		pop++;
 		int countByte = 0;
+		int childFolder_sector = ClusterToSector(item.start_cluster, vol.BS);//item.start_cluster * vol.BS.SperCluster;
 		if (item.file == 0)
 			do {
-				int childFolder_sector = ClusterToSector(item.start_cluster, vol.BS);//item.start_cluster * vol.BS.SperCluster;
 				Sector aSector = vol.D.sec[childFolder_sector];
 				item = readItem(vol, aSector, countByte);
 				if (item.file != 0 && item.file != 1)
@@ -459,7 +459,7 @@ vector<Item> createList(Volume vol)
 				countByte += 128;
 				if (countByte == 512)
 				{
-					aSector = vol.D.sec[++RDET_pos];
+					aSector = vol.D.sec[++childFolder_sector];
 					countByte = 0;
 				}
 			} while (1);
@@ -467,22 +467,31 @@ vector<Item> createList(Volume vol)
 	return it;
 }
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-Item FindFile(string name, Volume vol) {
+Item FindFile(string name, Volume vol,string folder_name) {
 	int Isize = vol.I.size();
 	Item item;
 	for (int i = 0; i < Isize; i++)
 	{
-		if (name == vol.I[i].name)
+		if (name == vol.I[i].name&&vol.I[i].folder==folder_name)
 			return vol.I[i];
 	}
 	item.name = "cannotfind";
 	return item;
 }
-void deleteItem(string filename, Volume& vol, string volName)
-{
+Item FindFolder(string name, Volume vol) {
+	int Isize = vol.I.size();
+	Item item;
+	for (int i = 0; i < Isize; i++)
+	{
+		if (name == vol.I[i].name&&vol.I[i].file == 0)
+			return vol.I[i];
+	}
+	return item;
+}
+void deleteItem_Export(string filename, Volume& vol, string volName,string folder_name) {
 	int32 rdet_sector = 0;
 	int32 start_sector;
-	Item item = FindFile(filename, vol);
+	Item item = FindFile(filename, vol, folder_name);
 	if (item.name == "cannotfind")
 	{
 		cout << "Already erase/move " << filename << " file" << endl;
@@ -493,7 +502,92 @@ void deleteItem(string filename, Volume& vol, string volName)
 			start_sector = rdet_sector;
 		}
 		else {
-			Item Folder = FindFile(item.folder, vol);
+			Item Folder = FindFolder(item.folder, vol);
+			start_sector = ClusterToSector(Folder.start_cluster, vol.BS);
+		}
+		//doc de tim vi tri file trong rdet/sdet
+		int32 fileRdet = 0;
+		int file_D_sector = 0;
+		int file_D_byte = 0;
+		Sector aSector = vol.D.sec[start_sector];
+		int countByte = 0;
+		do {
+			Item item = readItem(vol, aSector, countByte);
+			if (item.file != 0 && item.file != 1)
+				break;
+			if (item.start_cluster == 0 && item.n_cluster == 0)
+				break;
+			if (item.name == filename)
+			{
+				file_D_sector = start_sector;
+				file_D_byte = countByte;
+				fileRdet = (start_sector + vol.BS.FAT_size * vol.BS.numFAT + vol.BS.BootSector) * 512 + countByte;
+				break;
+			}
+			countByte += 128;
+			if (countByte == 512)
+			{
+				aSector = vol.D.sec[++start_sector];
+				countByte = 0;
+			}
+		} while (1);
+		//sua bang fat va doi E5 trong entry
+		ofstream fout(volName, ios::binary | ios::in);
+		if (!fout.is_open())
+		{
+			cout << "Can not open volume.";
+			return;
+		}
+		else
+		{
+			int start_FAT = 512 * (vol.BS.BootSector);
+			int start_Position = start_FAT + item.start_cluster * 4;
+			fout.seekp(start_Position, ios::beg);
+			for (int i = 0; i < item.n_cluster; i++)
+			{
+				int32 zero = 0;
+				fout.write((char*)&zero, sizeof(zero));
+				vol.FT.Fat[item.start_cluster + i] = 0;
+			}
+			int8 firstByte = 229;
+			item.name[0] = (char)firstByte;
+			fout.seekp(fileRdet, ios::beg);
+			vol.D.sec[file_D_sector].s[file_D_byte] = (char)229;
+			for (int i = 0; i < vol.I.size(); i++)
+			{
+				if (filename == vol.I[i].name)
+				{
+					vol.I.erase(vol.I.begin() + i);
+					break;
+				}
+			}
+			fout.write((char*)&item.name[0], sizeof(char));
+		}
+
+		fout.close();
+	}
+}
+
+void deleteItem(string filename, Volume& vol, string volName)
+{
+	int32 rdet_sector = 0;
+	int32 start_sector;
+	string folder_name;
+	printListFolder(vol.I);
+	cout << "Enter the folder contain " << filename << ": ";
+	cin >> folder_name;
+	Item item = FindFile(filename, vol,folder_name);
+	if (item.name == "cannotfind")
+	{
+		cout << "Already erase/move " << filename << " file" << endl;
+	}
+	else {
+		if (item.folder == volName)
+		{
+			start_sector = rdet_sector;
+		}
+		else {
+			Item Folder = FindFolder(item.folder, vol);
 			start_sector = ClusterToSector(Folder.start_cluster, vol.BS);
 		}
 		//doc de tim vi tri file trong rdet/sdet
@@ -562,12 +656,15 @@ void exportItem(string filename, Volume &vol, string volName)
 {
 	//ch?a hoi pass
 	string filePath;
+	string folder_name;
+	printListFolder(vol.I);
+	cout << "Enter the folder contain " << filename<<": ";
+	cin >> folder_name;
 	cout << "Example path is H:\\NewFolder\\" << endl;
 	cout << "Enter path to export: ";
-	cin.ignore();
-	getline(cin, filePath);
+	cin>>filePath;
 	filePath += filename;
-	Item item = FindFile(filename, vol);
+	Item item = FindFile(filename, vol,folder_name);
 	if (item.name == "cannotfind")
 	{
 		cout << "Cannot find " << filename << " file" << endl;
@@ -592,7 +689,7 @@ void exportItem(string filename, Volume &vol, string volName)
 			} while (current_cluster != 268435455);
 		}
 		fout.close();
-		deleteItem(filename, vol, volName);
+		deleteItem_Export(filename, vol, volName, folder_name);
 	}
 }
 //copy 1 file tu ngoai vao vol
@@ -798,8 +895,7 @@ void createFolder(string &filename, Volume& vol)
 	//vol.I.push_back(tp);
 	printListFolder(vol.I);
 	cout << "Input folder you wanna create a child folder: ";
-	cin.ignore();
-	getline(cin, r_fol);
+	cin>> r_fol;
 	int atp = 1, sDET = 0;
 	//check xem folder co ton tai trong sDET chua, neu co roi thi doi ten
 	for (int i = 0; i < vol.I.size(); i++)
@@ -833,6 +929,7 @@ void createFolder(string &filename, Volume& vol)
 			break;
 		}
 	}
+	new_File.start_cluster = pos;
 	// ghi sdet
 	int empty_pos = 0, sector_pos = ClusterToSector(vol.I[sDET].start_cluster, vol.BS);
 	for (; sector_pos < ClusterToSector(vol.I[sDET].start_cluster, vol.BS) + vol.BS.SperCluster; sector_pos++)
