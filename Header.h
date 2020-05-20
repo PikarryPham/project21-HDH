@@ -119,10 +119,10 @@ Item FindFile(string name, Volume vol);
 void deleteItem(string filename, Volume& vol, string volName);
 void exportItem(string filename, Volume& vol, string volName);
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, Volume& vol);
+void importItem(string &filename, Volume& vol);
 //them vao bang SDET
 void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File);
-
+void createFolder(string& filename, Volume& vol);
 //convert int32, int16 thanh int8 va nguoc lai
 unsigned char* convert32_to_8(int32 a);
 unsigned char* convert16_to_8(int16 a);

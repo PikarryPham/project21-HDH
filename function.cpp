@@ -596,7 +596,7 @@ void exportItem(string filename, Volume &vol, string volName)
 	}
 }
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, Volume& vol) {
+void importItem(string &filename, Volume& vol) {
 	string r_fol;
 	//Item tp;
 	//tp.name = vol.nameVol;
@@ -609,7 +609,7 @@ void importItem(string filename, Volume& vol) {
 	cout << "Input folder you wanna copy file into: ";
 	cin.ignore();
 	getline(cin, r_fol);
-	int atp = 1, sDET = 0;
+	int atp = 1, sDET = -1;
 	for (int i = 0; i < vol.I.size(); i++)
 	{
 		if (r_fol == vol.I[i].name)
@@ -624,6 +624,14 @@ void importItem(string filename, Volume& vol) {
 			filename += "_" + to_string(atp) + ext;
 			atp++;
 		}
+	}
+	if (sDET == -1)
+	{
+		cout << "Your folder name is not existed. It will be created now and add new file into this folder.";
+		createFolder(r_fol, vol);
+		for (int i = 0; i < vol.I.size(); i++)
+			if (r_fol == vol.I[i].name)
+				sDET = i;
 	}
 
 	Item new_File;
@@ -778,7 +786,7 @@ void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File)
 	for (int i = 0; i < new_File.password.length(); i++)
 		vol.D.sec[sector_pos].s[empty_pos++] = new_File.password[i];
 }
-void createFolder(string filename, Volume& vol)
+void createFolder(string &filename, Volume& vol)
 {
 	string r_fol;
 	//Item tp;
