@@ -467,12 +467,12 @@ vector<Item> createList(Volume vol)
 	return it;
 }
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-Item FindFile(string name, Volume vol,string folder_name) {
+Item FindFile(string name, Volume vol, string folder_name) {
 	int Isize = vol.I.size();
 	Item item;
 	for (int i = 0; i < Isize; i++)
 	{
-		if (name == vol.I[i].name&&vol.I[i].folder==folder_name)
+		if (name == vol.I[i].name && vol.I[i].folder == folder_name)
 			return vol.I[i];
 	}
 	item.name = "cannotfind";
@@ -483,12 +483,12 @@ Item FindFolder(string name, Volume vol) {
 	Item item;
 	for (int i = 0; i < Isize; i++)
 	{
-		if (name == vol.I[i].name&&vol.I[i].file == 0)
+		if (name == vol.I[i].name && vol.I[i].file == 0)
 			return vol.I[i];
 	}
 	return item;
 }
-void deleteItem_Export(string filename, Volume& vol, string volName,string folder_name) {
+void deleteItem_Export(string filename, Volume& vol, string volName, string folder_name) {
 	int32 rdet_sector = 0;
 	int32 start_sector;
 	Item item = FindFile(filename, vol, folder_name);
@@ -576,7 +576,7 @@ void deleteItem(string filename, Volume& vol, string volName)
 	printListFolder(vol.I);
 	cout << "Enter the folder contain " << filename << ": ";
 	cin >> folder_name;
-	Item item = FindFile(filename, vol,folder_name);
+	Item item = FindFile(filename, vol, folder_name);
 	if (item.name == "cannotfind")
 	{
 		cout << "Already erase/move " << filename << " file" << endl;
@@ -666,19 +666,19 @@ void deleteItem(string filename, Volume& vol, string volName)
 		fout.close();
 	}
 }
-void exportItem(string filename, Volume &vol, string volName)
+void exportItem(string filename, Volume& vol, string volName)
 {
 	//ch?a hoi pass
 	string filePath;
 	string folder_name;
 	printListFolder(vol.I);
-	cout << "Enter the folder contain " << filename<<": ";
+	cout << "Enter the folder contain " << filename << ": ";
 	cin >> folder_name;
 	cout << "Example path is H:\\NewFolder\\" << endl;
 	cout << "Enter path to export: ";
-	cin>>filePath;
+	cin >> filePath;
 	filePath += filename;
-	Item item = FindFile(filename, vol,folder_name);
+	Item item = FindFile(filename, vol, folder_name);
 	string password;
 	if (item.password != "")
 	{
@@ -690,7 +690,7 @@ void exportItem(string filename, Volume &vol, string volName)
 			cout << "Wrong password!" << endl;
 			cout << "Please enter again: ";
 			cin >> password;
-			password_hex= toHex(taoPass(password));
+			password_hex = toHex(taoPass(password));
 		}
 
 	}
@@ -722,7 +722,7 @@ void exportItem(string filename, Volume &vol, string volName)
 	}
 }
 //copy 1 file tu ngoai vao vol
-void importItem(string &filename, Volume& vol) {
+void importItem(string& filename, Volume& vol) {
 	string r_fol;
 	//Item tp;
 	//tp.name = vol.nameVol;
@@ -733,7 +733,7 @@ void importItem(string &filename, Volume& vol) {
 	//vol.I.push_back(tp);
 	printListFolder(vol.I);
 	cout << "Input folder you wanna copy file into: ";
-	cin>> r_fol;
+	cin >> r_fol;
 	int atp = 1, sDET = -1;
 	string filename_2 = filename;
 	for (int i = 0; i < vol.I.size(); i++)
@@ -786,7 +786,7 @@ void importItem(string &filename, Volume& vol) {
 		} while (!fin.eof());
 		fin.close();
 	}
-	
+
 
 	if (filename != filename_2)
 	{
@@ -922,7 +922,7 @@ void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File)
 	for (int i = 0; i < new_File.password.length(); i++)
 		vol.D.sec[sector_pos].s[empty_pos++] = new_File.password[i];
 }
-void createFolder(string &filename, Volume& vol)
+void createFolder(string& filename, Volume& vol)
 {
 	string r_fol;
 	//Item tp;
@@ -933,23 +933,14 @@ void createFolder(string &filename, Volume& vol)
 	//tp.start_cluster = 2;
 	//vol.I.push_back(tp);
 	cout << "Input folder you wanna create a child folder: ";
-	cin>> r_fol;
+	cin >> r_fol;
 	int atp = 1, sDET = 0;
-	string filename_2 = filename;
 	//check xem folder co ton tai trong sDET chua, neu co roi thi doi ten
 	for (int i = 0; i < vol.I.size(); i++)
 	{
 		if (r_fol == vol.I[i].name)
 		{
 			sDET = i;
-		}
-		if (vol.I[i].name == filename && vol.I[i].folder == r_fol)
-		{
-			int pos = filename.find('.');
-			string ext = filename.substr(pos);
-			filename.erase(filename.begin() + pos, filename.end());
-			filename += "_" + to_string(atp) + ext;
-			atp++;
 		}
 	}
 
@@ -958,11 +949,7 @@ void createFolder(string &filename, Volume& vol)
 	new_File.folder = r_fol;
 	new_File.file = 0;
 	new_File.n_cluster = 1;
-	if (filename != filename_2)
-	{
-		cout << filename_2 << " already has in this folder" << endl;
-		cout << "It will be renamed as " << filename << endl;
-	}
+
 	int pos = vol.BS.FAT_empty;
 	for (; pos < vol.FT.Fat.size(); pos++)
 	{
@@ -1167,14 +1154,15 @@ void createInfor(Volume& vol) {
 	vol.I = createList(vol);
 	writeFile(vol.nameVol, vol);
 }
-unsigned int taoPass(string pass) {
-
+uint64_t taoPass(string pass) {
 	/*H?n ch? gõ pass có D?U */
-	unsigned int init = 123321456654789987;
-	//unsigned int magic = 7891234;
-	int magic = rand() % 100;
-	int magic2 = rand();
-	unsigned int hash = 0;
+	uint64_t magic = 0;
+	uint64_t magic2 = 0;
+	for (int i = 0; i < pass.length(); i++) {
+		magic2 = (magic2 + pass[i]) * 256;
+	}
+	magic = magic2 % 100;
+	uint64_t hash = 0;
 	for (int i = 0; i < pass.length(); i++) {
 		hash = hash << i; //dùng phép d?i bit ph?i ?? ra m?t hash m?i
 		hash = hash ^ (pass[i]); // dùng phép xor ?? làm thay ??i các giá tr? bit
@@ -1182,13 +1170,19 @@ unsigned int taoPass(string pass) {
 	}
 	return hash;
 };
-string toHex(unsigned int input) {
-	string hexhash;
-	stringstream hexstream;
-	hexstream << hex << input; //Bi?n s? input thành 1 chu?i s? và ghép vào sau chu?i ?ang có //ví d? n?u input = 17 thì nó s? là "17"
-	hexhash = hexstream.str(); //l?y content c?a hextstream
-	std::transform(hexhash.begin(), hexhash.end(), hexhash.begin(), ::toupper); //toUpper chu?i hexhash
-	return hexhash; //?ây chính là password sau khi ???c mã hóa
+string toHex(uint64_t input) {
+	string hexhash(8, 0);
+	unsigned char* c = (unsigned char*)&input;
+	(c[7] << 56 | c[6] << 48 | c[5] << 40 | c[4] << 32 | c[3] << 24 | c[2] << 16 | c[1] << 8 | c[0] << 0);
+	unsigned char a[8] = { 0 };
+	for (int i = 0; i < 8; i++)
+		hexhash[i] = c[i];
+	return hexhash;
+	//stringstream hexstream;
+	//hexstream << hex << input; //Bi?n s? input thành 1 chu?i s? và ghép vào sau chu?i ?ang có //ví d? n?u input = 17 thì nó s? là "17"
+	//hexhash = hexstream.str(); //l?y content c?a hextstream
+	//transform(hexhash.begin(), hexhash.end(), hexhash.begin(), toupper); //toUpper chu?i hexhash
+	//return hexhash; //?ây chính là password sau khi ???c mã hóa
 };
 
 void createPass(string filename, Volume& vol) {
@@ -1199,23 +1193,24 @@ void createPass(string filename, Volume& vol) {
 	printListFolder(vol.I);
 	cout << "Enter the folder contain " << filename << ": ";
 	cin >> folder_name;
-	
+
 	int Isize = vol.I.size();
-	int pos=-1;
+	int pos = -1;
 	for (int i = 0; i < Isize; i++)
 	{
-		if (filename == vol.I[i].name&&vol.I[i].folder == folder_name)
+		if (filename == vol.I[i].name && vol.I[i].folder == folder_name)
 		{
 			pos = i;
 			break;
 		}
 	}
 
-	if (pos==-1)
+	if (pos == -1)
 	{
 		cout << "Can't find " << filename << " in the list of items" << endl;
 		return;
-	} else 
+	}
+	else
 	{
 		int option;
 		do {
@@ -1247,38 +1242,31 @@ void createPass(string filename, Volume& vol) {
 	}
 }
 //ham nay la ham menu list ra cac option can thiet
-void listMenu(Volume &vol) {
+void listMenu(Volume& vol) {
 	int option;
 	bool flag = true;
 	//tiep tuc chon option cho den khi nao nhan 0.Exit thi khi do flag == false ==> out khoi while loop
 	while (flag) {
 		do {
 			cout << "----> CHOOSE OPTION YOU WANT TO DO WITH VOLUME " << vol.nameVol << " <----" << endl;
-			cout << "		      1. Read Volume				 " << endl;
-			cout << "		      2. Write Volume			     " << endl;
-			cout << "		      3. Export File				 " << endl;
-			cout << "		      4. Import File				 " << endl;
-			cout << "		      5. Delete File				 " << endl;
-			cout << "		      6. Create Password			 " << endl;
-			cout << "		      7. View List File				 " << endl;
+			cout << "		      1. Write Volume			     " << endl;
+			cout << "		      2. Export File				 " << endl;
+			cout << "		      3. Import File				 " << endl;
+			cout << "		      4. Delete File				 " << endl;
+			cout << "		      5. Create Password			 " << endl;
+			cout << "		      6. View List File				 " << endl;
 			cout << "		      0. Exit						 " << endl;
 			cin >> option;
-			if (option < 0 || option > 7) cout << "Please enter again!" << "\n";
-		} while (option < 0 || option > 7);
+			if (option < 0 || option > 6) cout << "Please enter again!" << "\n";
+		} while (option < 0 || option > 6);
 
 		switch (option) {
 		case 1: {
-			cout << "--> You choose option " << option << " READ VOLUME" << endl;
-			readFile(vol.nameVol, vol);
-			break;
-		}
-		case 2: {
-
 			cout << "--> You choose option " << option << " WRITE VOLUME" << endl;
 			writeFile(vol.nameVol, vol);
 			break;
 		}
-		case 3: {
+		case 2: {
 			cout << "--> You choose option " << option << " EXPORT FILE" << endl;
 			string fname;
 			cout << "Enter the name of file you want to export: " << endl;
@@ -1286,7 +1274,7 @@ void listMenu(Volume &vol) {
 			exportItem(fname, vol, vol.nameVol);
 			break;
 		}
-		case 4: {
+		case 3: {
 			cout << "--> You choose option " << option << " IMPORT FILE" << endl;
 			string fname;
 			cout << "Enter the name of file you want to import: " << endl;
@@ -1295,15 +1283,15 @@ void listMenu(Volume &vol) {
 			writeFile(vol.nameVol, vol);
 			break;
 		}
-		case 5: {
+		case 4: {
 			cout << "--> You choose option " << option << " DELETE FILE" << endl;
 			string fname;
 			cout << "Enter the name of file you want to delete: " << endl;
 			cin >> fname;
-			deleteItem(fname, vol,vol.nameVol);
+			deleteItem(fname, vol, vol.nameVol);
 			break;
 		}
-		case 6: {
+		case 5: {
 			cout << "--> You choose option " << option << " CREATE PASSWORD" << endl;
 			string fname;
 			cout << "Enter the name of file you want to create password: " << endl;
@@ -1311,7 +1299,7 @@ void listMenu(Volume &vol) {
 			createPass(fname, vol);
 			break;
 		}
-		case 7: {
+		case 6: {
 			cout << "--> You choose option " << option << " CREATE PASSWORD" << endl;
 			cout << "List of files: " << endl;
 			printListFile(vol.I);

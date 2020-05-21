@@ -10,6 +10,7 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <vector>
+#include <functional>
 using namespace std;
 #define playHeight 30 //chieu cao man hinh
 #define playWidth 71  //chieu dai man hinh
@@ -121,7 +122,7 @@ void deleteItem_Export(string filename, Volume& vol, string volName, string fold
 void deleteItem(string filename, Volume& vol, string volName);
 void exportItem(string filename, Volume& vol, string volName);
 //copy 1 file tu ngoai vao vol
-void importItem(string &filename, Volume& vol);
+void importItem(string& filename, Volume& vol);
 //them vao bang SDET
 void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File);
 void createFolder(string& filename, Volume& vol);
@@ -139,8 +140,8 @@ void printListFolder(vector<Item> I);
 void createInfor(Volume& vol);
 void passNameOfVolumeToFile(string fname, Volume vol);
 //ham tao password, hoi ng dung pass
-unsigned int taoPass(string pass);
-string toHex(unsigned int input);
+uint64_t taoPass(string pass);
+string toHex(uint64_t input);
 void createPass(string filename, Volume& vol);
 
 /*co the se thiet ke them bien luu lai vi tri cluster bat dau
@@ -148,4 +149,4 @@ cua vung trong trong phan du lieu, de khoi phai duyet lai,
 bien luu vi tri trong trong RDET + FAT nua.
 *** hien tai chua co, do anh chua biet nen them o dau.
 */
-void listMenu(Volume &vol);
+void listMenu(Volume& vol);
