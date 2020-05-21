@@ -10,6 +10,7 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <vector>
+#include <functional>
 using namespace std;
 #define playHeight 30 //chieu cao man hinh
 #define playWidth 71  //chieu dai man hinh
@@ -115,14 +116,16 @@ int32 ClusterToSector(int cluster, BootSector BS);
 vector<Item> createList(Volume vol);
 Item readItem(Volume vol, Sector aSector, int currentByte);
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-Item FindFile(string name, Volume vol);
+Item FindFile(string name, Volume vol, string folder_name);
+Item FindFolder(string name, Volume vol);
+void deleteItem_Export(string filename, Volume& vol, string volName, string folder_name);
 void deleteItem(string filename, Volume& vol, string volName);
-void exportItem(string filename, Volume vol, string volName);
+void exportItem(string filename, Volume& vol, string volName);
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, Volume& vol);
+void importItem(string& filename, Volume& vol);
 //them vao bang SDET
 void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File);
-
+void createFolder(string& filename, Volume& vol);
 //convert int32, int16 thanh int8 va nguoc lai
 unsigned char* convert32_to_8(int32 a);
 unsigned char* convert16_to_8(int16 a);
@@ -133,19 +136,12 @@ int32 convert8_to_32(unsigned char* a);
 void printListFile(vector<Item>I);
 void printListFolder(vector<Item> I);
 
-//xoa 1 file hoac 1 folder
-void deleteItem(string filename, Volume& vol);
 //tao thong so phu hop cho cac bien cua boot sector
 void createInfor(Volume& vol);
-
+void passNameOfVolumeToFile(string fname, Volume vol);
 //ham tao password, hoi ng dung pass
-unsigned int taoPass(string pass);
-string toHex(unsigned int input);
-void createPass(string filename, Volume& vol);
+uint64_t taoPass(string pass);
+string toHex(uint64_t input);
+void createPass(string filename, Item& new_File);
 
-/*co the se thiet ke them bien luu lai vi tri cluster bat dau
-cua vung trong trong phan du lieu, de khoi phai duyet lai,
-bien luu vi tri trong trong RDET + FAT nua.
-*** hien tai chua co, do anh chua biet nen them o dau.
-*/
-void listMenu(Volume vol);
+void listMenu(Volume& vol);

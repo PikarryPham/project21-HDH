@@ -1,4 +1,4 @@
-#include "Header.h"
+Ôªø#include "Header.h"
 /*
 ********CAC HAM CHO GIAO DIEN CONSOLE****
 */
@@ -138,7 +138,7 @@ void mainMenu(Volume vol)
 		cin >> nme;
 		vector<string> str;
 		str = listNameOfVolume("file.txt");
-		//dÚ xem trong vector<string> cÛ ch?a name c·c volume ?Û cÛ tÍn volume n„y mÏnh v?a nh?p hay khÙng, n?u khÙng thÏ b?t nh?p l?i ho?c out
+		//d√≤ xem trong vector<string> c√≥ ch?a name c√°c volume ?√≥ c√≥ t√™n volume n√£y m√¨nh v?a nh?p hay kh√¥ng, n?u kh√¥ng th√¨ b?t nh?p l?i ho?c out
 		for (int i = 0; i < str.size(); i++) {
 			tmp = str[i];
 			if (nme == str[i]) {
@@ -407,6 +407,7 @@ Item readItem(Volume vol, Sector aSector, int currentByte) {
 }
 vector<Item> createList(Volume vol)
 {
+	vol.I.clear();
 	vector<Item> it = vol.I;
 	int countSec = 0;
 	int RDET_pos = 0;
@@ -439,14 +440,16 @@ vector<Item> createList(Volume vol)
 		Item item = it[pop];
 		pop++;
 		int countByte = 0;
+		int childFolder_sector = ClusterToSector(item.start_cluster, vol.BS);//item.start_cluster * vol.BS.SperCluster;
 		if (item.file == 0)
 			do {
-				int childFolder_sector = ClusterToSector(item.start_cluster, vol.BS);//item.start_cluster * vol.BS.SperCluster;
 				Sector aSector = vol.D.sec[childFolder_sector];
 				item = readItem(vol, aSector, countByte);
 				if (item.file != 0 && item.file != 1)
 					break;
 				if (item.start_cluster == 0 && item.n_cluster == 0)
+					break;
+				if (item.name == item.folder)
 					break;
 				if (item.name[0] != (char)229)
 				{
@@ -456,7 +459,7 @@ vector<Item> createList(Volume vol)
 				countByte += 128;
 				if (countByte == 512)
 				{
-					aSector = vol.D.sec[++RDET_pos];
+					aSector = vol.D.sec[++childFolder_sector];
 					countByte = 0;
 				}
 			} while (1);
@@ -464,22 +467,31 @@ vector<Item> createList(Volume vol)
 	return it;
 }
 //chep 1 file tu vol ra ngoai (check xem file co pass hay ko, neu co thi yeu cau nhap pass)
-Item FindFile(string name, Volume vol) {
+Item FindFile(string name, Volume vol, string folder_name) {
 	int Isize = vol.I.size();
 	Item item;
 	for (int i = 0; i < Isize; i++)
 	{
-		if (name == vol.I[i].name)
+		if (name == vol.I[i].name && vol.I[i].folder == folder_name)
 			return vol.I[i];
 	}
 	item.name = "cannotfind";
 	return item;
 }
-void deleteItem(string filename, Volume& vol, string volName)
-{
+Item FindFolder(string name, Volume vol) {
+	int Isize = vol.I.size();
+	Item item;
+	for (int i = 0; i < Isize; i++)
+	{
+		if (name == vol.I[i].name && vol.I[i].file == 0)
+			return vol.I[i];
+	}
+	return item;
+}
+void deleteItem_Export(string filename, Volume& vol, string volName, string folder_name) {
 	int32 rdet_sector = 0;
 	int32 start_sector;
-	Item item = FindFile(filename, vol);
+	Item item = FindFile(filename, vol, folder_name);
 	if (item.name == "cannotfind")
 	{
 		cout << "Already erase/move " << filename << " file" << endl;
@@ -490,12 +502,13 @@ void deleteItem(string filename, Volume& vol, string volName)
 			start_sector = rdet_sector;
 		}
 		else {
-			Item Folder = FindFile(item.folder, vol);
+			Item Folder = FindFolder(item.folder, vol);
 			start_sector = ClusterToSector(Folder.start_cluster, vol.BS);
 		}
 		//doc de tim vi tri file trong rdet/sdet
 		int32 fileRdet = 0;
-		int file_D = 0;
+		int file_D_sector = 0;
+		int file_D_byte = 0;
 		Sector aSector = vol.D.sec[start_sector];
 		int countByte = 0;
 		do {
@@ -506,7 +519,8 @@ void deleteItem(string filename, Volume& vol, string volName)
 				break;
 			if (item.name == filename)
 			{
-				file_D = start_sector;
+				file_D_sector = start_sector;
+				file_D_byte = countByte;
 				fileRdet = (start_sector + vol.BS.FAT_size * vol.BS.numFAT + vol.BS.BootSector) * 512 + countByte;
 				break;
 			}
@@ -538,8 +552,8 @@ void deleteItem(string filename, Volume& vol, string volName)
 			int8 firstByte = 229;
 			item.name[0] = (char)firstByte;
 			fout.seekp(fileRdet, ios::beg);
-			vol.D.sec[file_D].s[0] = (char)229;
-			for (int i = 0; i < sizeof(vol.I); i++)
+			vol.D.sec[file_D_sector].s[file_D_byte] = (char)229;
+			for (int i = 0; i < vol.I.size(); i++)
 			{
 				if (filename == vol.I[i].name)
 				{
@@ -549,19 +563,136 @@ void deleteItem(string filename, Volume& vol, string volName)
 			}
 			fout.write((char*)&item.name[0], sizeof(char));
 		}
+		fout.close();
+	}
+}
+
+void deleteItem(string filename, Volume& vol, string volName)
+{
+	int32 rdet_sector = 0;
+	int32 start_sector;
+	string folder_name;
+	printListFolder(vol.I);
+	cout << "Enter the folder contain " << filename << ": ";
+	cin >> folder_name;
+	Item item = FindFile(filename, vol, folder_name);
+	if (item.name == "cannotfind")
+	{
+		cout << "Already erase/move " << filename << " file" << endl;
+	}
+	else {
+		if (item.folder == volName)
+		{
+			start_sector = rdet_sector;
+		}
+		else {
+			Item Folder = FindFolder(item.folder, vol);
+			start_sector = ClusterToSector(Folder.start_cluster, vol.BS);
+		}
+		//doc de tim vi tri file trong rdet/sdet
+		int32 fileRdet = 0;
+		int file_D_sector = 0;
+		int file_D_byte = 0;
+		Sector aSector = vol.D.sec[start_sector];
+		int countByte = 0;
+		do {
+			Item item = readItem(vol, aSector, countByte);
+			if (item.file != 0 && item.file != 1)
+				break;
+			if (item.start_cluster == 0 && item.n_cluster == 0)
+				break;
+			if (item.name == filename)
+			{
+				file_D_sector = start_sector;
+				file_D_byte = countByte;
+				fileRdet = (start_sector + vol.BS.FAT_size * vol.BS.numFAT + vol.BS.BootSector) * 512 + countByte;
+				break;
+			}
+			countByte += 128;
+			if (countByte == 512)
+			{
+				aSector = vol.D.sec[++start_sector];
+				countByte = 0;
+			}
+		} while (1);
+		//sua bang fat va doi E5 trong entry
+		ofstream fout(volName, ios::binary | ios::in);
+		if (!fout.is_open())
+		{
+			cout << "Can not open volume.";
+			return;
+		}
+		else
+		{
+			int start_FAT = 512 * (vol.BS.BootSector);
+			int start_Position = start_FAT + item.start_cluster * 4;
+			fout.seekp(start_Position, ios::beg);
+			for (int i = 0; i < item.n_cluster; i++)
+			{
+				int32 zero = 0;
+				fout.write((char*)&zero, sizeof(zero));
+				vol.FT.Fat[item.start_cluster + i] = 0;
+			}
+			int8 firstByte = 229;
+			item.name[0] = (char)firstByte;
+			fout.seekp(fileRdet, ios::beg);
+			vol.D.sec[file_D_sector].s[file_D_byte] = (char)229;
+			for (int i = 0; i < vol.I.size(); i++)
+			{
+				if (filename == vol.I[i].name)
+				{
+					vol.I.erase(vol.I.begin() + i);
+					break;
+				}
+			}
+			fout.write((char*)&item.name[0], sizeof(char));
+			//// clear file content in data
+			//Sector temp;
+			//int content_byte = 512 * (ClusterToSector(item.start_cluster, vol.BS) + vol.BS.FAT_size * vol.BS.numFAT + vol.BS.BootSector);
+			//fout.seekp(content_byte, ios::beg);
+
+			//for (int i = 0; i < 512; i++)
+			//{
+			//	temp.s[i] = 0;
+			//}
+			//for (int i = ClusterToSector(item.start_cluster,vol.BS); i < ClusterToSector(item.start_cluster + item.n_cluster,vol.BS);i++)
+			//{
+			//	vol.D.sec[i]=temp;
+			//	fout.write((char*)&vol.D.sec, sizeof(vol.D.sec));
+			//}
+		}
 
 		fout.close();
 	}
 }
-void exportItem(string filename, Volume vol, string volName)
+void exportItem(string filename, Volume& vol, string volName)
 {
 	//ch?a hoi pass
 	string filePath;
+	string folder_name;
+	printListFolder(vol.I);
+	cout << "Enter the folder contain " << filename << ": ";
+	cin >> folder_name;
 	cout << "Example path is H:\\NewFolder\\" << endl;
 	cout << "Enter path to export: ";
-	getline(cin, filePath);
+	cin >> filePath;
 	filePath += filename;
-	Item item = FindFile(filename, vol);
+	Item item = FindFile(filename, vol, folder_name);
+	string password;
+	if (item.password != "")
+	{
+		cout << filename << " has a password." << endl;
+		cout << "Enter the password to open file: ";
+		cin >> password;
+		string password_hex = toHex(taoPass(password));
+		while (password_hex != item.password) {
+			cout << "Wrong password!" << endl;
+			cout << "Please enter again: ";
+			cin >> password;
+			password_hex = toHex(taoPass(password));
+		}
+
+	}
 	if (item.name == "cannotfind")
 	{
 		cout << "Cannot find " << filename << " file" << endl;
@@ -575,7 +706,7 @@ void exportItem(string filename, Volume vol, string volName)
 			return;
 		}
 		else {
-			//??c v‡ ki?m tra ph‚n m?nh
+			//??c v√† ki?m tra ph√¢n m?nh
 			int32 current_cluster = item.start_cluster;
 			do {
 				for (int i = 0; i < vol.BS.SperCluster; i++) {
@@ -586,24 +717,17 @@ void exportItem(string filename, Volume vol, string volName)
 			} while (current_cluster != 268435455);
 		}
 		fout.close();
-		deleteItem(filename, vol, volName);
+		deleteItem_Export(filename, vol, volName, folder_name);
 	}
 }
 //copy 1 file tu ngoai vao vol
-void importItem(string filename, Volume& vol) {
+void importItem(string& filename, Volume& vol) {
 	string r_fol;
-	//Item tp;
-	//tp.name = vol.nameVol;
-	//tp.folder = vol.nameVol;
-	//tp.file = 0;
-	//tp.n_cluster = 0;
-	//tp.start_cluster = 2;
-	//vol.I.push_back(tp);
 	printListFolder(vol.I);
 	cout << "Input folder you wanna copy file into: ";
-	cin.ignore();
-	getline(cin, r_fol);
-	int atp = 1, sDET = 0;
+	cin >> r_fol;
+	int atp = 1, sDET = -1;
+	string filename_2 = filename;
 	for (int i = 0; i < vol.I.size(); i++)
 	{
 		if (r_fol == vol.I[i].name)
@@ -612,16 +736,24 @@ void importItem(string filename, Volume& vol) {
 		}
 		if (vol.I[i].name == filename && vol.I[i].folder == r_fol)
 		{
-			int pos = filename.find('.');
-			string ext = filename.substr(pos);
-			filename.erase(filename.begin() + pos, filename.end());
-			filename += "_" + to_string(atp) + ext;
+			int pos = filename_2.find('.');
+			string ext = filename_2.substr(pos);
+			filename_2.erase(filename_2.begin() + pos, filename_2.end());
+			filename_2 += "_" + to_string(atp) + ext;
 			atp++;
 		}
 	}
+	if (sDET == -1)
+	{
+		cout << "Your folder name is not existed. It will be created now and add new file into this folder.";
+		createFolder(r_fol, vol);
+		for (int i = 0; i < vol.I.size(); i++)
+			if (r_fol == vol.I[i].name)
+				sDET = i;
+	}
 
 	Item new_File;
-	new_File.name = filename;
+	new_File.name = filename_2;
 	new_File.folder = r_fol;
 	new_File.file = 1;
 
@@ -646,7 +778,15 @@ void importItem(string filename, Volume& vol) {
 		} while (!fin.eof());
 		fin.close();
 	}
-	int pos = 2;
+
+	if (filename != filename_2)
+	{
+		cout << filename << " already has in this folder" << endl;
+		cout << "It will be renamed as " << filename_2 << endl;
+		filename = filename_2;
+	}
+	createPass(filename_2, new_File);
+	int pos = vol.BS.FAT_empty;
 	for (; pos < vol.FT.Fat.size() - new_File.n_cluster; pos++)
 	{
 		bool check = true;	//kt co cho trong trong fat vua du kich thuoc file ko
@@ -678,7 +818,7 @@ void importItem(string filename, Volume& vol) {
 	}
 	else	//TH bi phan manh
 	{
-		pos = 2;
+		pos = vol.BS.FAT_empty;
 		int c = 0;
 		type = true;
 		int count = new_File.n_cluster, prev_pos;
@@ -697,6 +837,7 @@ void importItem(string filename, Volume& vol) {
 			}
 			pos++;
 		}
+		vol.BS.FAT_empty = pos;
 	}
 	// ghi sdet
 	int empty_pos = 0, sector_pos = ClusterToSector(vol.I[sDET].start_cluster, vol.BS);//(vol.I[sDET].start_cluster - 2) * vol.BS.SperCluster;
@@ -772,7 +913,7 @@ void import_SDET(Volume& vol, int empty_pos, int sector_pos, Item new_File)
 	for (int i = 0; i < new_File.password.length(); i++)
 		vol.D.sec[sector_pos].s[empty_pos++] = new_File.password[i];
 }
-void createFolder(string filename, Volume& vol)
+void createFolder(string& filename, Volume& vol)
 {
 	string r_fol;
 	//Item tp;
@@ -782,25 +923,14 @@ void createFolder(string filename, Volume& vol)
 	//tp.n_cluster = 0;
 	//tp.start_cluster = 2;
 	//vol.I.push_back(tp);
-	printListFolder(vol.I);
 	cout << "Input folder you wanna create a child folder: ";
-	cin.ignore();
-	getline(cin, r_fol);
+	cin >> r_fol;
 	int atp = 1, sDET = 0;
-	//check xem folder co ton tai trong sDET chua, neu co roi thi doi ten
 	for (int i = 0; i < vol.I.size(); i++)
 	{
 		if (r_fol == vol.I[i].name)
 		{
 			sDET = i;
-		}
-		if (vol.I[i].name == filename && vol.I[i].folder == r_fol)
-		{
-			int pos = filename.find('.');
-			string ext = filename.substr(pos);
-			filename.erase(filename.begin() + pos, filename.end());
-			filename += "_" + to_string(atp) + ext;
-			atp++;
 		}
 	}
 
@@ -810,7 +940,9 @@ void createFolder(string filename, Volume& vol)
 	new_File.file = 0;
 	new_File.n_cluster = 1;
 
-	int pos = 2;
+	createPass(filename, new_File);
+
+	int pos = vol.BS.FAT_empty;
 	for (; pos < vol.FT.Fat.size(); pos++)
 	{
 		if (vol.FT.Fat[pos] == 0)
@@ -819,6 +951,8 @@ void createFolder(string filename, Volume& vol)
 			break;
 		}
 	}
+	vol.BS.FAT_empty = pos + 1;
+	new_File.start_cluster = pos;
 	// ghi sdet
 	int empty_pos = 0, sector_pos = ClusterToSector(vol.I[sDET].start_cluster, vol.BS);
 	for (; sector_pos < ClusterToSector(vol.I[sDET].start_cluster, vol.BS) + vol.BS.SperCluster; sector_pos++)
@@ -872,7 +1006,7 @@ void printListFolder(vector<Item> I)
 	for (int i = 0; i < I.size(); i++)
 	{
 		if (!I[i].file)
-			cout << "File: " << I[i].name << endl;
+			cout << "Folder: " << I[i].name << " in Folder: " << I[i].folder << endl;
 	}
 }
 void printListFile(vector<Item> I)
@@ -880,19 +1014,41 @@ void printListFile(vector<Item> I)
 	for (int i = 0; i < I.size(); i++)
 	{
 		if (I[i].file)
-			cout << "File: " << I[i].name << endl;
+			cout << "File: " << I[i].name << " in Folder: " << I[i].folder << endl;
 	}
 }
 
 //xoa 1 file hoac 1 folder
-void deleteItem(string filename, Volume& vol) {
-	//do nthing
-}
+
 //tao thong so phu hop cho cac bien cua boot sector
+void passNameOfVolumeToFile(string fname, Volume vol)
+{
+	std::ofstream  fout;
+	fout.open(fname, std::ios_base::app);
+	fout << "\n";
+	fout << vol.nameVol;
+	fout.close();
+}
 void createInfor(Volume& vol) {
+	//ph·∫ßn m·ªõi ƒë∆∞·ª£c th√™m v√†o
+	vector<string> list = listNameOfVolume("file.txt");
 	cout << "Enter your volume's name: ";
 	cin >> vol.nameVol;
-	// c·c thÙng s? h?p l˝ cho FAT32
+	string tmp;
+	//cap nhat ten volume vao trong file, neu trung thi keu dat ten lai
+	for (int i = 0; i < list.size(); i++) {
+		tmp = list[i];
+		if (vol.nameVol == tmp)
+		{
+			cout << "Your new volume name has the same name with another one in file" << endl;
+			cout << "Enter your volume's name again: ";
+			cin >> vol.nameVol;
+		}
+	}
+	if (vol.nameVol != tmp) {
+		passNameOfVolumeToFile("file.txt", vol);
+	}
+	// c√°c th√¥ng s? h?p l√Ω cho FAT32
 	int size;
 	int option;
 	string typeSize;
@@ -947,19 +1103,19 @@ void createInfor(Volume& vol) {
 	vol.BS.SperCluster = sectorPerCluster;
 	vol.BS.numFAT = 1;
 	cout << "Size of volume (sector) is " << vol.BS.vol_size << endl;
-	//==> t? c·c thÙng s? trÍn ta ph?i suy ra ???c s? sector cho FAT = SF
-	//FAT32 ==> kÌch th??c m?i ph?n t? trong b?ng FAT l‡ 4 bytes 
-	//cÙng th?c tÌnh SF:
+	//==> t? c√°c th√¥ng s? tr√™n ta ph?i suy ra ???c s? sector cho FAT = SF
+	//FAT32 ==> k√≠ch th??c m?i ph?n t? trong b?ng FAT l√† 4 bytes 
+	//c√¥ng th?c t√≠nh SF:
 	double tmp_FATsize = 0.0;
 	tmp_FATsize = (vol.BS.vol_size - vol.BS.BootSector + 2 * vol.BS.SperCluster) * 1.0 / (vol.BS.BperSector * vol.BS.SperCluster / 4 + 1);
-	vol.BS.FAT_size = ceilf(tmp_FATsize); //h‡m l‡m trÚn lÍn
+	vol.BS.FAT_size = ceilf(tmp_FATsize); //h√†m l√†m tr√≤n l√™n
 
 	vol.FT.Fat.push_back(268435448);
 	vol.FT.Fat.push_back(4294967295);
 	for (int i = 2; i < vol.BS.FAT_size * vol.BS.BperSector / 4; i++)
 		vol.FT.Fat.push_back(0);
 
-	//c?p nh?t thÍm ==> cho s? nh? thÙi n?u khÙng h? m·y 
+	//c?p nh?t th√™m ==> cho s? nh? th√¥i n?u kh√¥ng h? m√°y 
 
 	Sector temp = { 0 };
 	int8 s[512] = { 0 };
@@ -988,107 +1144,93 @@ void createInfor(Volume& vol) {
 	vol.D.sec[0].s[pos++] = 0; //loai item: 0: folder, 1: file
 	vol.D.sec[0].s[pos++] = 2; //cluster bat dau cua folder Volume
 	vol.I = createList(vol);
+	writeFile(vol.nameVol, vol);
 }
-unsigned int taoPass(string pass) {
-
-	/*H?n ch? gı pass cÛ D?U */
-	unsigned int init = 123321456654789987;
-	//unsigned int magic = 7891234;
-	int magic = rand() % 100;
-	int magic2 = rand();
-	unsigned int hash = 0;
+uint64_t taoPass(string pass) {
+	/*H?n ch? g√µ pass c√≥ D?U */
+	uint64_t magic = 0;
+	uint64_t magic2 = 0;
 	for (int i = 0; i < pass.length(); i++) {
-		hash = hash << i; //d˘ng phÈp d?i bit ph?i ?? ra m?t hash m?i
-		hash = hash ^ (pass[i]); // d˘ng phÈp xor ?? l‡m thay ??i c·c gi· tr? bit
+		magic2 = (magic2 + pass[i]) * 256;
+	}
+	magic = magic2 % 100;
+	uint64_t hash = 0;
+	for (int i = 0; i < pass.length(); i++) {
+		hash = hash << i; //d√πng ph√©p d?i bit ph?i ?? ra m?t hash m?i
+		hash = hash ^ (pass[i]); // d√πng ph√©p xor ?? l√†m thay ??i c√°c gi√° tr? bit
 		hash = hash * magic + magic2;
 	}
 	return hash;
 };
-string toHex(unsigned int input) {
-	string hexhash;
-	stringstream hexstream;
-	hexstream << hex << input; //Bi?n s? input th‡nh 1 chu?i s? v‡ ghÈp v‡o sau chu?i ?ang cÛ //vÌ d? n?u input = 17 thÏ nÛ s? l‡ "17"
-	hexhash = hexstream.str(); //l?y content c?a hextstream
-	std::transform(hexhash.begin(), hexhash.end(), hexhash.begin(), std::toupper); //toUpper chu?i hexhash
-	return hexhash; //?‚y chÌnh l‡ password sau khi ???c m„ hÛa
+string toHex(uint64_t input) {
+	string hexhash(8, 0);
+	unsigned char* c = (unsigned char*)&input;
+	(c[7] << 56 | c[6] << 48 | c[5] << 40 | c[4] << 32 | c[3] << 24 | c[2] << 16 | c[1] << 8 | c[0] << 0);
+	unsigned char a[8] = { 0 };
+	for (int i = 0; i < 8; i++)
+		hexhash[i] = c[i];
+	return hexhash;
+	//stringstream hexstream;
+	//hexstream << hex << input; //Bi?n s? input th√†nh 1 chu?i s? v√† gh√©p v√†o sau chu?i ?ang c√≥ //v√≠ d? n?u input = 17 th√¨ n√≥ s? l√† "17"
+	//hexhash = hexstream.str(); //l?y content c?a hextstream
+	//transform(hexhash.begin(), hexhash.end(), hexhash.begin(), toupper); //toUpper chu?i hexhash
+	//return hexhash; //?√¢y ch√≠nh l√† password sau khi ???c m√£ h√≥a
 };
 
-void createPass(string filename, Volume& vol) {
-	vol.I = createList(vol);
-	//vector<Item> I cua volume trong TH nay se chua danh sach cac item duoc tao tu ham createList
-
-	int len = vol.I.size();
-	for (int i = 1; i < len; i++) //vi item thu nhat la chinh cai volume do ==> bat dau tu 1
-	{
-		if (filename == vol.I[i].name) //do xem trong vector<Item>I co I[i].name nao == filename hay khong ? chuyen qua phan nhap pass : bao "khong co" & out
-		{
-			int option;
+void createPass(string filename, Item& new_File) {
+	int option;
+	do {
+		cout << "Do you want to set password for " << filename << " Yes: 1. No: 0 ";
+		cin >> option;
+		if (option == 1) {
+			//password √≠t nh?t 6 k√Ω t?
+			string password;
 			do {
-				cout << "Do you want to set password for " << filename << " Yes: 1. No: 0 ";
-				cin >> option;
-				if (option == 1) {
-					//password Ìt nh?t 6 k˝ t?
-					string password;
-					do {
-						cout << "Enter your password (at least 6 characters): ";
-						cin >> password;
-						if (password.length() < 6) {
-							cout << "Please enter password again!" << endl;
-						}
-					} while (password.length() < 6);
-					//cout << toHex(taoPass(password)) << endl;
-					//them password vao trong cai item I co chua filename do
-					vol.I[i].password = toHex(taoPass(password));
-					cout << "Have set password " << password << " for " << filename << endl;
+				cout << "Enter your password (at least 6 characters): ";
+				cin >> password;
+				if (password.length() < 6) {
+					cout << "Please enter password again!" << endl;
 				}
-				else if (option == 0) {
-					cout << "Not set password" << endl;
-					return;
-				}
-				else if (option != 0 && option != 1) {
-					cout << "Please enter again" << endl;
-				}
-			} while (option != 0 && option != 1);
+			} while (password.length() < 6);
+			//cout << toHex(taoPass(password)) << endl;
+				//them password vao trong cai item I co chua filename do
+			new_File.password = toHex(taoPass(password));
+			cout << "Have set password " << password << " for " << filename << endl;
 		}
-		else {
-			cout << "Can't find " << filename << "in the list of items" << endl;
+		else if (option == 0) {
+			cout << "Not set password" << endl;
 			return;
 		}
-	}
+		else if (option != 0 && option != 1) {
+			cout << "Please enter again" << endl;
+		}
+	} while (option != 0 && option != 1);
 }
 //ham nay la ham menu list ra cac option can thiet
-void listMenu(Volume vol) {
+void listMenu(Volume& vol) {
 	int option;
 	bool flag = true;
 	//tiep tuc chon option cho den khi nao nhan 0.Exit thi khi do flag == false ==> out khoi while loop
 	while (flag) {
 		do {
 			cout << "----> CHOOSE OPTION YOU WANT TO DO WITH VOLUME " << vol.nameVol << " <----" << endl;
-			cout << "		      1. Read Volume				 " << endl;
-			cout << "		      2. Write Volume			     " << endl;
-			cout << "		      3. Export File				 " << endl;
-			cout << "		      4. Import File				 " << endl;
-			cout << "		      5. Delete File				 " << endl;
-			cout << "		      6. Create Password			 " << endl;
-			cout << "		      7. View List File				 " << endl;
+			cout << "		      1. Write Volume			     " << endl;
+			cout << "		      2. Export File				 " << endl;
+			cout << "		      3. Import File				 " << endl;
+			cout << "		      4. Delete File				 " << endl;
+			cout << "		      5. View List File				 " << endl;
 			cout << "		      0. Exit						 " << endl;
 			cin >> option;
-			if (option < 0 || option > 7) cout << "Please enter again!" << "\n";
-		} while (option < 0 || option > 7);
+			if (option < 0 || option > 5) cout << "Please enter again!" << "\n";
+		} while (option < 0 || option > 5);
 
 		switch (option) {
 		case 1: {
-			cout << "--> You choose option " << option << " READ VOLUME" << endl;
-			readFile(vol.nameVol, vol);
-			break;
-		}
-		case 2: {
-
 			cout << "--> You choose option " << option << " WRITE VOLUME" << endl;
 			writeFile(vol.nameVol, vol);
 			break;
 		}
-		case 3: {
+		case 2: {
 			cout << "--> You choose option " << option << " EXPORT FILE" << endl;
 			string fname;
 			cout << "Enter the name of file you want to export: " << endl;
@@ -1096,7 +1238,7 @@ void listMenu(Volume vol) {
 			exportItem(fname, vol, vol.nameVol);
 			break;
 		}
-		case 4: {
+		case 3: {
 			cout << "--> You choose option " << option << " IMPORT FILE" << endl;
 			string fname;
 			cout << "Enter the name of file you want to import: " << endl;
@@ -1105,23 +1247,15 @@ void listMenu(Volume vol) {
 			writeFile(vol.nameVol, vol);
 			break;
 		}
-		case 5: {
+		case 4: {
 			cout << "--> You choose option " << option << " DELETE FILE" << endl;
 			string fname;
 			cout << "Enter the name of file you want to delete: " << endl;
 			cin >> fname;
-			deleteItem(fname, vol);
+			deleteItem(fname, vol, vol.nameVol);
 			break;
 		}
-		case 6: {
-			cout << "--> You choose option " << option << " CREATE PASSWORD" << endl;
-			string fname;
-			cout << "Enter the name of file you want to create password: " << endl;
-			cin >> fname;
-			createPass(fname, vol);
-			break;
-		}
-		case 7: {
+		case 5: {
 			cout << "--> You choose option " << option << " CREATE PASSWORD" << endl;
 			cout << "List of files: " << endl;
 			printListFile(vol.I);

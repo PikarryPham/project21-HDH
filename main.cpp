@@ -6,11 +6,8 @@ int main() {
 	smallMenu(vol);
 	//hien thi con tro
 	setCursor(1, 10);
-	//nameVolMenu(vol);
-	//createInfor(vol);
-	//writeFile(vol.nameVol, vol);
-	//importItem("DoAn.docx", vol);
-	//writeFile("DoAn.docx", vol);
+	nameVolMenu(vol);
+	createInfor(vol);
 	system("pause");
 	return 0;
 }
