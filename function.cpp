@@ -647,6 +647,20 @@ void deleteItem(string filename, Volume& vol, string volName)
 				}
 			}
 			fout.write((char*)&item.name[0], sizeof(char));
+			//// clear file content in data
+			//Sector temp;
+			//int content_byte = 512 * (ClusterToSector(item.start_cluster, vol.BS) + vol.BS.FAT_size * vol.BS.numFAT + vol.BS.BootSector);
+			//fout.seekp(content_byte, ios::beg);
+
+			//for (int i = 0; i < 512; i++)
+			//{
+			//	temp.s[i] = 0;
+			//}
+			//for (int i = ClusterToSector(item.start_cluster,vol.BS); i < ClusterToSector(item.start_cluster + item.n_cluster,vol.BS);i++)
+			//{
+			//	vol.D.sec[i]=temp;
+			//	fout.write((char*)&vol.D.sec, sizeof(vol.D.sec));
+			//}
 		}
 
 		fout.close();
@@ -665,6 +679,21 @@ void exportItem(string filename, Volume &vol, string volName)
 	cin>>filePath;
 	filePath += filename;
 	Item item = FindFile(filename, vol,folder_name);
+	string password;
+	if (item.password != "")
+	{
+		cout << filename << " has a password." << endl;
+		cout << "Enter the password to open file: ";
+		cin >> password;
+		string password_hex = toHex(taoPass(password));
+		while (password_hex != item.password) {
+			cout << "Wrong password!" << endl;
+			cout << "Please enter again: ";
+			cin >> password;
+			password_hex= toHex(taoPass(password));
+		}
+
+	}
 	if (item.name == "cannotfind")
 	{
 		cout << "Cannot find " << filename << " file" << endl;
@@ -704,9 +733,9 @@ void importItem(string &filename, Volume& vol) {
 	//vol.I.push_back(tp);
 	printListFolder(vol.I);
 	cout << "Input folder you wanna copy file into: ";
-	cin.ignore();
-	getline(cin, r_fol);
+	cin>> r_fol;
 	int atp = 1, sDET = -1;
+	string filename_2 = filename;
 	for (int i = 0; i < vol.I.size(); i++)
 	{
 		if (r_fol == vol.I[i].name)
@@ -715,10 +744,10 @@ void importItem(string &filename, Volume& vol) {
 		}
 		if (vol.I[i].name == filename && vol.I[i].folder == r_fol)
 		{
-			int pos = filename.find('.');
-			string ext = filename.substr(pos);
-			filename.erase(filename.begin() + pos, filename.end());
-			filename += "_" + to_string(atp) + ext;
+			int pos = filename_2.find('.');
+			string ext = filename_2.substr(pos);
+			filename_2.erase(filename_2.begin() + pos, filename_2.end());
+			filename_2 += "_" + to_string(atp) + ext;
 			atp++;
 		}
 	}
@@ -732,7 +761,7 @@ void importItem(string &filename, Volume& vol) {
 	}
 
 	Item new_File;
-	new_File.name = filename;
+	new_File.name = filename_2;
 	new_File.folder = r_fol;
 	new_File.file = 1;
 
@@ -757,7 +786,16 @@ void importItem(string &filename, Volume& vol) {
 		} while (!fin.eof());
 		fin.close();
 	}
-	int pos = 2;
+	
+
+	if (filename != filename_2)
+	{
+		cout << filename << " already has in this folder" << endl;
+		cout << "It will be renamed as " << filename_2 << endl;
+		filename = filename_2;
+	}
+
+	int pos = vol.BS.FAT_empty;
 	for (; pos < vol.FT.Fat.size() - new_File.n_cluster; pos++)
 	{
 		bool check = true;	//kt co cho trong trong fat vua du kich thuoc file ko
@@ -789,7 +827,7 @@ void importItem(string &filename, Volume& vol) {
 	}
 	else	//TH bi phan manh
 	{
-		pos = 2;
+		pos = vol.BS.FAT_empty;
 		int c = 0;
 		type = true;
 		int count = new_File.n_cluster, prev_pos;
@@ -808,6 +846,7 @@ void importItem(string &filename, Volume& vol) {
 			}
 			pos++;
 		}
+		vol.BS.FAT_empty = pos;
 	}
 	// ghi sdet
 	int empty_pos = 0, sector_pos = ClusterToSector(vol.I[sDET].start_cluster, vol.BS);//(vol.I[sDET].start_cluster - 2) * vol.BS.SperCluster;
@@ -893,10 +932,10 @@ void createFolder(string &filename, Volume& vol)
 	//tp.n_cluster = 0;
 	//tp.start_cluster = 2;
 	//vol.I.push_back(tp);
-	printListFolder(vol.I);
 	cout << "Input folder you wanna create a child folder: ";
 	cin>> r_fol;
 	int atp = 1, sDET = 0;
+	string filename_2 = filename;
 	//check xem folder co ton tai trong sDET chua, neu co roi thi doi ten
 	for (int i = 0; i < vol.I.size(); i++)
 	{
@@ -919,8 +958,12 @@ void createFolder(string &filename, Volume& vol)
 	new_File.folder = r_fol;
 	new_File.file = 0;
 	new_File.n_cluster = 1;
-
-	int pos = 2;
+	if (filename != filename_2)
+	{
+		cout << filename_2 << " already has in this folder" << endl;
+		cout << "It will be renamed as " << filename << endl;
+	}
+	int pos = vol.BS.FAT_empty;
 	for (; pos < vol.FT.Fat.size(); pos++)
 	{
 		if (vol.FT.Fat[pos] == 0)
@@ -929,6 +972,7 @@ void createFolder(string &filename, Volume& vol)
 			break;
 		}
 	}
+	vol.BS.FAT_empty = pos + 1;
 	new_File.start_cluster = pos;
 	// ghi sdet
 	int empty_pos = 0, sector_pos = ClusterToSector(vol.I[sDET].start_cluster, vol.BS);
@@ -1151,47 +1195,59 @@ void createPass(string filename, Volume& vol) {
 	vol.I = createList(vol);
 	//vector<Item> I cua volume trong TH nay se chua danh sach cac item duoc tao tu ham createList
 
-	int len = vol.I.size();
-	for (int i = 1; i < len; i++) //vi item thu nhat la chinh cai volume do ==> bat dau tu 1
+	string folder_name;
+	printListFolder(vol.I);
+	cout << "Enter the folder contain " << filename << ": ";
+	cin >> folder_name;
+	
+	int Isize = vol.I.size();
+	int pos=-1;
+	for (int i = 0; i < Isize; i++)
 	{
-		if (filename == vol.I[i].name) //do xem trong vector<Item>I co I[i].name nao == filename hay khong ? chuyen qua phan nhap pass : bao "khong co" & out
+		if (filename == vol.I[i].name&&vol.I[i].folder == folder_name)
 		{
-			int option;
-			do {
-				cout << "Do you want to set password for " << filename << " Yes: 1. No: 0 ";
-				cin >> option;
-				if (option == 1) {
-					//password ít nh?t 6 ký t?
-					string password;
-					do {
-						cout << "Enter your password (at least 6 characters): ";
-						cin >> password;
-						if (password.length() < 6) {
-							cout << "Please enter password again!" << endl;
-						}
-					} while (password.length() < 6);
-					//cout << toHex(taoPass(password)) << endl;
-					//them password vao trong cai item I co chua filename do
-					vol.I[i].password = toHex(taoPass(password));
-					cout << "Have set password " << password << " for " << filename << endl;
-				}
-				else if (option == 0) {
-					cout << "Not set password" << endl;
-					return;
-				}
-				else if (option != 0 && option != 1) {
-					cout << "Please enter again" << endl;
-				}
-			} while (option != 0 && option != 1);
+			pos = i;
+			break;
 		}
-		else {
-			cout << "Can't find " << filename << "in the list of items" << endl;
-			return;
-		}
+	}
+
+	if (pos==-1)
+	{
+		cout << "Can't find " << filename << " in the list of items" << endl;
+		return;
+	} else 
+	{
+		int option;
+		do {
+			cout << "Do you want to set password for " << filename << " Yes: 1. No: 0 ";
+			cin >> option;
+			if (option == 1) {
+				//password ít nh?t 6 ký t?
+				string password;
+				do {
+					cout << "Enter your password (at least 6 characters): ";
+					cin >> password;
+					if (password.length() < 6) {
+						cout << "Please enter password again!" << endl;
+					}
+				} while (password.length() < 6);
+				//cout << toHex(taoPass(password)) << endl;
+				//them password vao trong cai item I co chua filename do
+				vol.I[pos].password = toHex(taoPass(password));
+				cout << "Have set password " << password << " for " << filename << endl;
+			}
+			else if (option == 0) {
+				cout << "Not set password" << endl;
+				return;
+			}
+			else if (option != 0 && option != 1) {
+				cout << "Please enter again" << endl;
+			}
+		} while (option != 0 && option != 1);
 	}
 }
 //ham nay la ham menu list ra cac option can thiet
-void listMenu(Volume vol) {
+void listMenu(Volume &vol) {
 	int option;
 	bool flag = true;
 	//tiep tuc chon option cho den khi nao nhan 0.Exit thi khi do flag == false ==> out khoi while loop
